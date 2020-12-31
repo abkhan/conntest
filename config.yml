@@ -1,0 +1,115 @@
+App:
+  name: so-trapper
+  env: dev
+  traptarget: lab   # to send to lab instead of prod, or none for no traps
+  staleTime: 90m    # an alert not refreshed for this much time is identified as stale
+  clearStale: 4h    # after this time, remove the alert and send a clear for this alert
+  retrapTime: 30m   # do not send a refresh of the trap for less than this time
+  discardOld: 20m   # discard messages older than this time when reading
+  maxStatusHandlers: 32   # A maximum amount of goroutines that can be fired to handle incoming status traffic
+  statusQueLen: 1000      # Len of Status message Queue into a common processor
+  trapSenders: 6          # Number of goroutines sending trap to trapd
+  trapInterval: 50        # How long to wait for a given goroutine before sending the next trap to trapd
+  trapQueLen: 1000        # Len of Trap Queue
+  cacheCleanDuration: 24h        # Clean cache every this duration
+  numClearRepeat: 1        # Repeat the clear alerts this many times
+  durClearRepeat: 10m        # duration between each repeat
+kafka:
+  enable: true
+  reconDelay: 30s
+  readers:      # soTrapper will create one gorountine for reading for all configured readers below   
+    - read: scopeSignOn   # Kafka reader details for SSA-signOn status messages, use alertGroup here
+      topic: opp.alarms
+      group: SO-Trapper-dev
+    - read: scopeHpna  # Kafka reader details for SSA-hpna status messages
+      topic: opp.fec
+      group: SO-HPNA-dev
+    - read: CMTS-Interface  # Kafka reader details for SSA-cmts-upstream status messages
+      topic: opp.sonoffec
+      group: SSA-Cmts-Upst-dev
+    - read: Node-Downstream  # Kafka reader details for SSA-downstream status messages
+      topic: opp.downstream
+      group: SSA-downstream-dev
+    - read: Node-OFDMA  # Kafka reader details for Node-OFDMA status messages
+      topic: opp.ofdma
+      group: SSA-ofdma-dev
+    - read: Optical-Offline
+      topic: opp.optical.offline
+      group: SSA-opticoff-dev
+    - read: CMTS-Modem-Offline
+      topic: opp.cmts.alarms
+      group: SSA-cmtsdev-offl-dev
+    - read: Hub-Modem-Offline
+      topic: opp.hub.alarms
+      group: SSA-hubdev-offl-dev
+  kafkahosts:         # use ncw kafka host
+    - 142.136.167.139:9092
+getPropsService:
+  routingKey: scope-service-get_properties-dev.v2
+  timeout: 15s
+  cleanupTime: 7200s
+  beGetPropsName: getProps
+searchService:
+  routingKeys:
+    default: scope-service-search-v2-dev
+    node: scope-service-search-v2-dev.node
+    onu: scope-service-search-v2-dev.onu
+  timeout: 15s
+  retryTimeout: 5s
+  chtrHashkey: ea854f4bed3eadbed3d9141b2ac35824ef0eb877  
+  beName: search-rabbit
+rabbit:
+  host: lab-rabbit-01.scope.charter.com
+  port: 5672
+  user: rio
+  pass: un1f13d
+  prefetch: 20
+  rpcActive: false
+  exchangeName: rio.action
+  exchangeType: topic
+  contentType: application/json
+  contentEncoding: gzip
+  connRetry: 3s
+  dialTimeout: 3s
+  heartbeat: 19s
+tsdb:
+  host: lab-lb-local.scope.charter.com
+  port: 4242
+  defaultBuffer: 1
+  defaultInterval: 30
+  metric: ssa
+netcoolService:
+  routingKey: scope-service-netcool-dev
+  timeout: 9s
+  backend: netcool
+monitor:
+  appD:
+    enable: true
+    appName: SCOPE - Dev
+    timeout: 5000 # MS
+    createBtMaxDelay: 25ms
+    createBtGoroutineCount: 4
+    endBufferSize: 256
+    controller:
+      host:  appdynamics-agent-uat.charter.com
+      port: 8090
+      account: customer1
+      accessKey: 94c55b91-fbca-4faa-a0f8-2aef39fff105
+      useSSL: false
+    log:
+      baseDir: /var/log/scope/appd
+      level: warn # fatal or , error, warn, info, debug, trace, default
+      maxFiles: 10
+      maxFileSize: 10000000 # In bytes (10MB)
+  apm:
+    enable: true # If false setup process will be skipped
+    active: true # If false ES APM will stop reporting APM data
+    server: http://ncw-es-13.scope.charter.com:8200
+    key: ''
+    queueTime: 10s      # Amount of time to wait before sending a request to the Elastic APM server
+    requestSize: 1MB    # The maximum size of request bodies to send to the Elastic APM server
+    maxSpan: 10         # Limits the amount of spans that are recorded per transaction
+    spanThreshold: 20s  # The APM agent will collect a stack trace for every recorded span whose duration exceeds this configured value.
+    stackTraceLimit: 6  # Limits the number of frames captured for each stack trace
+    sampleRate: 1.0     # To reduce overhead and storage requirements, you can set the sample rate to a value between 0.0 and 1.0
+    metricsInterval: 15s # The interval at which APM agent gathers and reports metrics. Set to 0s to disable
