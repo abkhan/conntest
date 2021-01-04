@@ -1,4 +1,4 @@
-package httsdb
+package tsdb
 
 import (
 	"bytes"
@@ -12,7 +12,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	mon "go.scope.charter.com/lib-monitor"
 )
 
 // Conf has http client conf
@@ -47,15 +46,12 @@ type HttpClient struct {
 	//Number of seconds before writitng what we've buffered
 	Interval int
 
-	// For Monitoring
-	bm mon.Monitor
-
 	base_url string
 	client   *http.Client
 	putChan  chan DataPoint
 }
 
-func NewHttpClient(conf Conf, bMonitor mon.Monitor) *HttpClient {
+func NewHttpClient(conf Conf) *HttpClient {
 	var netTransport = &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout: conf.HTTPConf.DialTimeout,
@@ -76,9 +72,6 @@ func NewHttpClient(conf Conf, bMonitor mon.Monitor) *HttpClient {
 		base_url: fmt.Sprintf("http://%s:%d/api", conf.Host, conf.Port),
 		putChan:  make(chan DataPoint, 1000),
 	}
-
-	// busboy monitor
-	t.bm = bMonitor
 
 	if t.Interval != 0 && t.BufferSize != 0 {
 		go t.writer()
@@ -152,7 +145,7 @@ func (t *HttpClient) GetPlain(q QueryRequest) ([]Result, error) {
 	return res, nil
 }
 
-func (t *HttpClient) Get(q QueryRequest, bt mon.Transaction) ([]Result, error) {
+func (t *HttpClient) Get(q QueryRequest) ([]Result, error) {
 
 	var (
 		resp *http.Response
@@ -171,12 +164,9 @@ func (t *HttpClient) Get(q QueryRequest, bt mon.Transaction) ([]Result, error) {
 	}
 	req.Header.Add("Accept-Encoding", "gzip")
 
-	exitcall, _ := bt.Exit("tsdb", url)
 	if resp, err = t.client.Do(req); err != nil {
-		exitcall.EndWithError(err)
 		return res, fmt.Errorf("Failed to do request: %+v", err)
 	}
-	exitcall.End()
 	defer resp.Body.Close()
 
 	gzipReader, err := gzip.NewReader(resp.Body)
@@ -186,7 +176,6 @@ func (t *HttpClient) Get(q QueryRequest, bt mon.Transaction) ([]Result, error) {
 			return res, nil
 		}
 		e := fmt.Errorf("Failed to read gzip: %+v", err)
-		bt.Error(e)
 		return res, e
 	}
 
@@ -195,7 +184,6 @@ func (t *HttpClient) Get(q QueryRequest, bt mon.Transaction) ([]Result, error) {
 		errRes := map[string]map[string]interface{}{}
 		if err = json.NewDecoder(gzipReader).Decode(&errRes); err != nil {
 			e := fmt.Errorf("Failed to decode: %+v", err)
-			bt.Error(e)
 			return res, e
 		}
 
@@ -204,13 +192,11 @@ func (t *HttpClient) Get(q QueryRequest, bt mon.Transaction) ([]Result, error) {
 			message = o["message"].(string)
 		}
 		e := fmt.Errorf("ResponseCode: %d (%s)", resp.StatusCode, message)
-		bt.Error(e)
 		return res, e
 	}
 
 	if err = json.NewDecoder(gzipReader).Decode(&res); err != nil {
 		e := fmt.Errorf("Failed to unmarshal: %+v", err)
-		bt.Error(e)
 		return res, e
 	}
 
@@ -267,6 +253,14 @@ func (t *HttpClient) PutMany(dps []DataPoint) error {
 	}
 
 	return nil
+}
+
+// PutOne sends directly
+func (t *HttpClient) PutOne(dp DataPoint) {
+	buffer := []DataPoint{dp}
+	if err := t.PutMany(buffer); err != nil {
+		log.Errorf("Failed to putOne data point: %+v", err)
+	}
 }
 
 // Put sends to a put chan that is put with many when buffer is filled or timeout

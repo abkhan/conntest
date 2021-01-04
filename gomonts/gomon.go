@@ -1,4 +1,4 @@
-package main
+package gomonts
 
 import (
 	"fmt"
@@ -8,11 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"concheck/tsdb"
+
 	"github.com/struCoder/pidusage"
-	mon "go.scope.charter.com/lib-monitor"
-	"go.scope.charter.com/lib-monitor/appd"
-	"go.scope.charter.com/tsdb/v2"
 )
 
 type mmetric struct {
@@ -20,8 +18,9 @@ type mmetric struct {
 	d    bool   // false, for current value, true for diff with previous
 }
 
+type AddFunc func(m string, v float64, mt []tsdb.Tag)
+
 const type_gomon = "gomon"
-const type_calls = "calls"
 
 // some consts for time being
 var md = 60 * time.Second
@@ -36,19 +35,31 @@ var initTime time.Time
 
 // GoMoInit has to be called from main to start the process
 // send an empty rk to not run "runInfo"
-func GoMoInit(a, v string, rk []string, m mon.Monitor, c tsdb.Conf) {
+// a - app name
+// v - version of the app
+func GoMoInit(a, v string, c tsdb.Conf) AddFunc {
 	initTime = time.Now()
 	app = a
 	ver = v
 	host, _ = os.Hostname()
-	tsc = tsdb.NewHttpClient(c, m)
+	tsc = tsdb.NewHttpClient(c)
 	pid = os.Getpid()
 	pids = strconv.Itoa(pid)
 
-	go runMonitor(md)
-	go runInfo(sd, rk)
-	go runAppdBt(md, m)
-	respMonInit()
+	//go runMonitor(md)
+	//go runInfo(sd, rk)
+
+	tags := []tsdb.Tag{{Key: "app", Value: app},
+		{Key: "host", Value: host},
+		{Key: "id", Value: pids},
+	}
+
+	return func(m string, v float64, moretags []tsdb.Tag) {
+		for _, tag := range moretags {
+			tags = append(tags, tag)
+		}
+		addToTsdb(a, m, v, tags)
+	}
 }
 
 // AddGoMoMetric to add a metric from memStat into monitoring
@@ -131,42 +142,24 @@ func runInfo(d time.Duration, rks []string) {
 	}
 }
 
-func runAppdBt(d time.Duration, m mon.Monitor) {
-
-	tags := []tsdb.Tag{{Key: "app", Value: app},
-		{Key: "host", Value: host},
-		{Key: "id", Value: pids},
-	}
-
-	for {
-		time.Sleep(5 * time.Second) // Initial delay
-		dmap := appd.BtStats()
-
-		for metric, mval := range dmap {
-			addToTsdb(type_gomon, metric, float64(mval), tags)
-		}
-		<-time.After(d)
-	}
-}
-
 // addToTsdb adds a metric to tsdb
 // metric name is "scope" + t + m with a `.` in between
 // t is the type of the metric, like gomon, calls, etc
 // m is the metric name
 func addToTsdb(t, m string, v float64, tags []tsdb.Tag) {
 	if tsc == nil || app == "" {
-		log.Errorf(">>> Bad Value, addToTsdb failed >> TSDB Client: %+v, appName: %s", tsc, app)
+		fmt.Printf(">>> Bad Value, addToTsdb failed >> TSDB Client: %+v, appName: %s", tsc, app)
 		return
 	}
 
 	utime := int(time.Now().Unix())
 	dp := tsdb.DataPoint{
-		Metric:   "scope." + t + "." + m,
+		Metric:   t + "." + m,
 		Unixtime: utime,
 		Value:    v,
 	}
 
 	dp.Tags = tags
-	log.Debugf("metricToTsdb: %+v", dp)
-	tsc.Put(dp)
+	fmt.Printf("metricToTsdb: %+v\n", dp)
+	tsc.PutOne(dp)
 }
