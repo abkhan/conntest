@@ -1,0 +1,13 @@
+{
+    "start": 1346846000000,
+    "end": 1346847300005,
+    "queries": [{
+        "metric": "sys.cpu.nice",
+        "aggregator": "min",
+        "downsample": "4m-avg",
+        "tags": {
+            "host": "*",
+            "dc": "*"
+        }
+    }]
+}

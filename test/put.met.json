@@ -1,0 +1,74 @@
+[
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346846400000,
+        "value": 18,
+        "tags": {
+           "host": "web01",
+           "dc": "lga"
+        }
+    },
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346846800000,
+        "value": 19,
+        "tags": {
+           "host": "web01",
+           "dc": "lga"
+        }
+    },
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346847000000,
+        "value": 20,
+        "tags": {
+           "host": "web01",
+           "dc": "lga"
+        }
+    },
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346847000005,
+        "value": 19,
+        "tags": {
+           "host": "web01",
+           "dc": "lga"
+        }
+    },
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346846400000,
+        "value": 9,
+        "tags": {
+           "host": "web02",
+           "dc": "lga"
+        }
+    },
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346846800000,
+        "value": 8,
+        "tags": {
+           "host": "web02",
+           "dc": "lga"
+        }
+    },
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346847000000,
+        "value": 7,
+        "tags": {
+           "host": "web02",
+           "dc": "lga"
+        }
+    },
+    {
+        "metric": "sys.cpu.nice",
+        "timestamp": 1346847000005,
+        "value": 10,
+        "tags": {
+           "host": "web02",
+           "dc": "lga"
+        }
+    }
+]

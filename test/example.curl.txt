@@ -1,0 +1,2 @@
+curl -X POST --data-binary @put.met.json 'https://192.168.0.139:4242/api/put'
+curl --data-binary @query.json 'https://192.168.0.139:4242/api/query'
