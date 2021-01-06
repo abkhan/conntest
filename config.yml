@@ -1,5 +1,9 @@
 app:
   name: wconn
+  pinglist: "4.2.2.2,4.2.2.3"
+  delaybet: 4s
+  pingcount: 9
+  save: true
 tsdb:
   host: 192.168.0.139
   port: 4242

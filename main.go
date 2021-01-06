@@ -26,7 +26,11 @@ type sconf struct {
 	Tsdb tsdb.Conf `mapstructure:"tsdb"`
 }
 type appConfig struct {
-	Name string `mapstructure:"name"`
+	Name         string        `mapstructure:"name"`
+	PingList     string        `mapstructure:"pinglist"`  // comma separated ping list
+	DelayBetween time.Duration `mapstructure:"delaybet"`  // delay in between pings
+	PingCount    int           `mapstructure:"pingcount"` // do this many pings
+	Save         bool          `mapstructure:"save"`      // save in tsdb or not
 }
 
 var (
