@@ -90,7 +90,7 @@ func main() {
 	// *** ping loop ***
 	var trtt time.Duration
 	errorc := 0
-	pingIP := strings.Split(c.App.PingList, ".")
+	pingIP := strings.Split(c.App.PingList, ",")
 	ipcount := len(pingIP)
 	if ipcount < 1 {
 		fmt.Printf("no destination\n")
@@ -129,9 +129,12 @@ func main() {
 		avgDur = time.Duration(int64(trtt) / (int64(goodping)))
 	}
 	avgDurS := avgDur.String()
-	fmt.Printf("Ping Loop [%s]: %s\n", avgDurS, time.Now().String())
+	fmt.Printf(">>> End Ping Loop [%s]: %s\n", avgDurS, time.Now().String())
 
+	// *********************
 	// *** write to tsdb ***
+	// *********************
+
 	// Write the two values to tsdb alongwith hostname
 	addfunc := gomonts.GoMoInit(c.App.Name, "0.1.0", c.Tsdb)
 	//tags := []tsdb.Tag{{Key: "rtt", Value: avgDurS}}
@@ -180,7 +183,7 @@ func doPingFastPing(d string) (time.Duration, error) {
 func doPing(d string) (*ping.Statistics, error) {
 	pinger, err := ping.NewPinger(d)
 	if err != nil {
-		panic(err)
+		return &ping.Statistics{}, err
 	}
 	pinger.Count = 3
 	err = pinger.Run() // Blocks until finished.
