@@ -10,6 +10,8 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/abkhan/gomonts"
@@ -33,22 +35,52 @@ type appConfig struct {
 	Save         bool          `mapstructure:"save"`      // save in tsdb or not
 }
 
+const (
+	defaultCount    = 9
+	defaultDelaySec = 4
+	defaultPingList = "4.2.2.2,4.2.2.3,google.com"
+	defaultSave     = true
+	defaultName     = "wconn"
+)
+
 var (
 	startTime   = time.Now().String()
 	destination string
-	pingCount   = 9
-	delayCount  = 4
+	count       = 0
+	delaySec    = 0
+	name        string
 )
 
 func main() {
-	flag.StringVar(&destination, "d", "4.2.2.2", "address to ping")
+	flag.StringVar(&name, "n", "", "default app name")
+	flag.StringVar(&destination, "d", "", "addresses to ping")
+	flag.IntVar(&count, "c", 0, "count of pings")
+	flag.IntVar(&delaySec, "ds", 0, "delay between pings")
 	flag.Parse()
 
 	fmt.Printf("StartTime: %s\n", startTime)
 	fmt.Printf("Destination: %s\n", destination)
 
 	c := sconf{}
-	config.Load(&c)
+	if e := config.Load(&c); e != nil {
+		// confile is not loaded, use defalts and more
+		c.App.Name = defaultName
+		c.App.PingCount = defaultCount
+		c.App.PingList = defaultPingList
+		c.App.DelayBetween = time.Duration(defaultDelaySec) * time.Second
+	}
+	if count != 0 {
+		c.App.PingCount = count
+	}
+	if delaySec != 0 {
+		c.App.DelayBetween = time.Duration(delaySec) * time.Second
+	}
+	if destination != "" {
+		c.App.PingList = destination
+	}
+	if name != "" {
+		c.App.Name = name
+	}
 
 	if err := config.ValidateConf(c); err != nil {
 		fmt.Println(err)
@@ -58,11 +90,19 @@ func main() {
 	// *** ping loop ***
 	var trtt time.Duration
 	errorc := 0
+	pingIP := strings.Split(c.App.PingList, ".")
+	ipcount := len(pingIP)
+	if ipcount < 1 {
+		fmt.Printf("no destination\n")
+		os.Exit(1)
+	}
 
-	fmt.Println("Ping Loop Start: " + time.Now().String())
-	for c := 0; c < pingCount-1; c++ {
+	fmt.Println(">>> Ping Loop Start: " + time.Now().String())
+	for x := 0; x < c.App.PingCount-1; x++ {
 
-		if t, e := doPing(destination); e != nil {
+		ipx := x % ipcount
+		pingdest := pingIP[ipx]
+		if t, e := doPing(pingdest); e != nil {
 			fmt.Println("doPing error: " + e.Error())
 			errorc++
 		} else {
@@ -70,9 +110,11 @@ func main() {
 			trtt += t.AvgRtt
 		}
 
-		time.Sleep(time.Duration(delayCount) * time.Second)
+		time.Sleep(c.App.DelayBetween)
 	}
-	if t, e := doPing(destination); e != nil {
+
+	pingdest := pingIP[len(pingIP)-1]
+	if t, e := doPing(pingdest); e != nil {
 		fmt.Println("last doPing error: " + e.Error())
 		errorc++
 	} else {
@@ -82,8 +124,8 @@ func main() {
 
 	var avgDur time.Duration
 	var goodping int = 0
-	if errorc != pingCount {
-		goodping = pingCount - errorc
+	if errorc != c.App.PingCount {
+		goodping = c.App.PingCount - errorc
 		avgDur = time.Duration(int64(trtt) / (int64(goodping)))
 	}
 	avgDurS := avgDur.String()
@@ -91,7 +133,7 @@ func main() {
 
 	// *** write to tsdb ***
 	// Write the two values to tsdb alongwith hostname
-	addfunc := gomonts.GoMoInit(c.App.Name, "0.0.2", c.Tsdb)
+	addfunc := gomonts.GoMoInit(c.App.Name, "0.1.0", c.Tsdb)
 	//tags := []tsdb.Tag{{Key: "rtt", Value: avgDurS}}
 	tags := []tsdb.Tag{{Key: "failed", Value: fmt.Sprintf("%d", errorc)}}
 	addfunc("ping", float64(int64(avgDur)/1000000), tags)
