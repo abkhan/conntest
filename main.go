@@ -6,17 +6,17 @@
 package main
 
 import (
-	"concheck/conf"
-	"concheck/gomonts"
 	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"time"
 
-	config "concheck/conf"
-	"concheck/tsdb"
+	"github.com/abkhan/gomonts"
 
+	tsdb "github.com/abkhan/opentsdb-httpclient"
+
+	"github.com/abkhan/config"
 	"github.com/go-ping/ping"
 	fastping "github.com/tatsushid/go-fastping"
 )
@@ -44,7 +44,7 @@ func main() {
 	fmt.Printf("Destination: %s\n", destination)
 
 	c := sconf{}
-	conf.Load(&c)
+	config.Load(&c)
 
 	if err := config.ValidateConf(c); err != nil {
 		fmt.Println(err)

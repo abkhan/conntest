@@ -1,7 +1,6 @@
 app:
   name: wconn
 tsdb:
-  //host: abkhan.dynu.net
   host: 192.168.0.139
   port: 4242
   defaultBuffer: 1
@@ -9,8 +8,8 @@ tsdb:
   metric: wconn
   http:
     dialTimeout: 3s
-    tlsHandShakeTimeout: 3s  # <-- not used per Sean 
+    tlsHandShakeTimeout: 3s
     maxIdleConnsPerHost: 20
     maxIdleConns: 20
-    idleConnTimeout: 2m   # <-- to match opentsdb idle
-    clientTimeout: 5s   # <-- this was 3m, changed to 0 on tsdb, in 2019,
+    idleConnTimeout: 2m 
+    clientTimeout: 5s 
